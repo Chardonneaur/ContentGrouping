@@ -80,7 +80,6 @@ class API extends \Piwik\Plugin\API
         return [
             'success' => true,
             'message' => Piwik::translate('ContentGrouping_InvalidateSuccess'),
-            'output' => $result->makeOutputLogs(),
         ];
     }
 
@@ -135,6 +134,10 @@ class API extends \Piwik\Plugin\API
     public function testUrl($idSite, $url)
     {
         Piwik::checkUserHasAdminAccess($idSite);
+
+        if (mb_strlen($url) > 2048) {
+            throw new \Exception('URL must be 2048 characters or less.');
+        }
 
         $dao = new RulesDao();
         $rules = $dao->getRulesForSite($idSite);

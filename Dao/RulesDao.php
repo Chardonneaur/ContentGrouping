@@ -61,8 +61,12 @@ class RulesDao
         return (int) Db::get()->lastInsertId();
     }
 
+    private const ALLOWED_UPDATE_COLUMNS = ['group_name', 'pattern', 'match_type', 'priority'];
+
     public function updateRule($idRule, $idSite, $columns)
     {
+        $columns = array_intersect_key($columns, array_flip(self::ALLOWED_UPDATE_COLUMNS));
+
         if (empty($columns)) {
             return;
         }
