@@ -1,0 +1,217 @@
+{% extends 'admin.twig' %}
+
+{% set title %}{{ 'ContentGrouping_ManageRules'|translate }}{% endset %}
+
+{% block content %}
+<div id="contentGroupingAdmin">
+
+    <h2>{{ 'ContentGrouping_ManageRules'|translate }}</h2>
+    <p class="description">{{ 'ContentGrouping_RulesDescription'|translate }}</p>
+
+    <div style="margin-bottom:20px; display:flex; gap:10px; align-items:center">
+        <label for="cgSiteSelector" style="font-weight:bold; white-space:nowrap">{{ 'ContentGrouping_SelectSite'|translate }}</label>
+        <select id="cgSiteSelector" style="max-width:350px">
+            {% for site in sites %}
+                <option value="{{ site.idsite }}"{% if site.idsite == idSite %} selected{% endif %}>{{ site.name }} (id: {{ site.idsite }})</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div id="cgList">
+        <div style="margin-bottom:16px">
+            <button type="button" class="btn" onclick="cgShowCreate()">+ {{ 'ContentGrouping_AddRule'|translate }}</button>
+        </div>
+        <div id="cgTableWrap">
+            <table class="entityTable" id="cgTable">
+                <thead><tr>
+                    <th>{{ 'ContentGrouping_GroupName'|translate }}</th>
+                    <th>{{ 'ContentGrouping_Pattern'|translate }}</th>
+                    <th>{{ 'ContentGrouping_MatchType'|translate }}</th>
+                    <th>{{ 'ContentGrouping_Priority'|translate }}</th>
+                    <th>{{ 'ContentGrouping_Actions'|translate }}</th>
+                </tr></thead>
+                <tbody id="cgBody"></tbody>
+            </table>
+        </div>
+        <div id="cgEmpty" style="display:none; padding:20px 0; color:#999">
+            <p>{{ 'ContentGrouping_NoRulesYet'|translate }}</p>
+        </div>
+
+        <h3 style="margin-top:30px">{{ 'ContentGrouping_TestUrl'|translate }}</h3>
+        <div style="display:flex; gap:8px; align-items:center; margin-bottom:20px">
+            <input type="text" id="cgTestUrl" placeholder="{{ 'ContentGrouping_TestUrlPlaceholder'|translate }}" style="flex:1; max-width:500px">
+            <button type="button" class="btn-flat" onclick="cgTestUrl()">Test</button>
+            <span id="cgTestResult" style="font-weight:bold; margin-left:8px"></span>
+        </div>
+
+        <h3 style="margin-top:30px">{{ 'ContentGrouping_InvalidateTitle'|translate }}</h3>
+        <p class="description">{{ 'ContentGrouping_InvalidateDescription'|translate }}</p>
+        <div style="display:flex; gap:8px; align-items:center; margin-bottom:20px">
+            <button type="button" class="btn" id="cgInvalidateBtn" onclick="cgInvalidate()">{{ 'ContentGrouping_InvalidateButton'|translate }}</button>
+            <span id="cgInvalidateResult" style="margin-left:8px"></span>
+        </div>
+    </div>
+
+    <div id="cgForm" style="display:none">
+        <div class="card"><div class="card-content">
+            <h3 id="cgFormTitle" style="margin-top:0">{{ 'ContentGrouping_AddRule'|translate }}</h3>
+            <input type="hidden" id="cgEditId" value="">
+
+            <div style="margin-bottom:12px">
+                <label>{{ 'ContentGrouping_GroupName'|translate }} *</label><br>
+                <input type="text" id="cgGroupName" maxlength="255" style="width:100%; max-width:400px">
+            </div>
+            <div style="margin-bottom:12px">
+                <label>{{ 'ContentGrouping_Pattern'|translate }} *</label><br>
+                <input type="text" id="cgPattern" maxlength="500" style="width:100%; max-width:400px">
+            </div>
+            <div style="margin-bottom:12px">
+                <label>{{ 'ContentGrouping_MatchType'|translate }}</label><br>
+                <select id="cgMatchType" style="max-width:200px">
+                    <option value="prefix">{{ 'ContentGrouping_MatchTypePrefix'|translate }}</option>
+                    <option value="regex">{{ 'ContentGrouping_MatchTypeRegex'|translate }}</option>
+                </select>
+            </div>
+            <div style="margin-bottom:16px">
+                <label>{{ 'ContentGrouping_Priority'|translate }}</label><br>
+                <input type="number" id="cgPriority" value="0" min="0" style="max-width:120px">
+                <div style="color:#999; font-size:12px; margin-top:4px">0 = highest priority</div>
+            </div>
+
+            <button type="button" class="btn" onclick="cgSave()">{{ 'ContentGrouping_Save'|translate }}</button>
+            <button type="button" class="btn-flat" onclick="cgCancel()">{{ 'ContentGrouping_Cancel'|translate }}</button>
+        </div></div>
+    </div>
+</div>
+
+<div class="ui-confirm" id="cgConfirmDelete">
+    <h2>{{ 'General_AreYouSure'|translate }}</h2>
+    <p>{{ 'ContentGrouping_DeleteRuleConfirm'|translate }}</p>
+    <input role="yes" type="button" value="{{ 'General_Yes'|translate }}"/>
+    <input role="no" type="button" value="{{ 'General_No'|translate }}"/>
+</div>
+
+<script>
+$(function() {
+    function getSelectedSite() {
+        return parseInt($('#cgSiteSelector').val(), 10);
+    }
+
+    function api(method, params, cb) {
+        var a = new ajaxHelper();
+        a.addParams($.extend({module:'API', method:'ContentGrouping.'+method, format:'json'}, params), 'get');
+        a.setCallback(cb); a.setFormat('json'); a.send();
+    }
+    function apiPost(method, getP, postP, cb) {
+        var a = new ajaxHelper();
+        a.addParams($.extend({module:'API', method:'ContentGrouping.'+method, format:'json'}, getP), 'get');
+        a.addParams(postP, 'post');
+        a.setCallback(cb); a.setFormat('json'); a.send();
+    }
+
+    function loadList() {
+        api('getRules', {idSite:getSelectedSite()}, function(rules) {
+            var b = $('#cgBody').empty();
+            if (!rules || !rules.length) {
+                $('#cgTableWrap').hide(); $('#cgEmpty').show(); return;
+            }
+            $('#cgTableWrap').show(); $('#cgEmpty').hide();
+            $.each(rules, function(i, r) {
+                var matchLabel = r.match_type === 'regex' ? 'Regex' : 'Prefix';
+                b.append('<tr>' +
+                    '<td>'+piwikHelper.escape(r.group_name)+'</td>' +
+                    '<td><code>'+piwikHelper.escape(r.pattern)+'</code></td>' +
+                    '<td>'+matchLabel+'</td>' +
+                    '<td>'+piwikHelper.escape(String(r.priority))+'</td>' +
+                    '<td>' +
+                        '<button type="button" class="btn-flat btn-small" onclick="cgEditItem('+r.idrule+')">{{ 'ContentGrouping_Edit'|translate }}</button> ' +
+                        '<button type="button" class="btn-flat btn-small" style="color:#c62828" onclick="cgDelItem('+r.idrule+')">{{ 'ContentGrouping_Delete'|translate }}</button>' +
+                    '</td></tr>');
+            });
+        });
+    }
+
+    $('#cgSiteSelector').on('change', function() {
+        $('#cgTestResult').text('');
+        $('#cgInvalidateResult').text('');
+        cgCancel();
+        loadList();
+    });
+
+    window.cgShowCreate = function() {
+        $('#cgEditId').val(''); $('#cgGroupName').val(''); $('#cgPattern').val('');
+        $('#cgMatchType').val('prefix'); $('#cgPriority').val('0');
+        $('#cgFormTitle').text('{{ 'ContentGrouping_AddRule'|translate }}');
+        $('#cgList').hide(); $('#cgForm').show();
+    };
+
+    window.cgEditItem = function(id) {
+        api('getRules', {idSite:getSelectedSite()}, function(rules) {
+            var r = null;
+            $.each(rules, function(i, rule) { if (parseInt(rule.idrule)===id) r=rule; });
+            if (!r) return;
+            $('#cgEditId').val(r.idrule);
+            $('#cgGroupName').val(r.group_name);
+            $('#cgPattern').val(r.pattern);
+            $('#cgMatchType').val(r.match_type);
+            $('#cgPriority').val(r.priority);
+            $('#cgFormTitle').text('{{ 'ContentGrouping_EditRule'|translate }}');
+            $('#cgList').hide(); $('#cgForm').show();
+        });
+    };
+
+    window.cgCancel = function() {
+        $('#cgForm').hide(); $('#cgList').show();
+    };
+
+    window.cgSave = function() {
+        var gn = $.trim($('#cgGroupName').val()),
+            pat = $.trim($('#cgPattern').val()),
+            mt = $('#cgMatchType').val(),
+            pri = parseInt($('#cgPriority').val(),10)||0,
+            id = $('#cgEditId').val();
+
+        if (!gn || !pat) { alert('Group name and pattern are required.'); return; }
+
+        var post = {idSite:getSelectedSite(), groupName:gn, pattern:pat, matchType:mt, priority:pri};
+        if (id) {
+            post.idRule = id;
+            apiPost('updateRule', {}, post, function() { cgCancel(); loadList(); });
+        } else {
+            apiPost('addRule', {}, post, function() { cgCancel(); loadList(); });
+        }
+    };
+
+    window.cgDelItem = function(id) {
+        piwikHelper.modalConfirm('#cgConfirmDelete', { yes: function() {
+            apiPost('deleteRule', {}, {idSite:getSelectedSite(), idRule:id}, function() { loadList(); });
+        }});
+    };
+
+    window.cgTestUrl = function() {
+        var url = $.trim($('#cgTestUrl').val());
+        if (!url) return;
+        api('testUrl', {idSite:getSelectedSite(), url:url}, function(res) {
+            $('#cgTestResult').text(res.group || '(no match)');
+        });
+    };
+
+    window.cgInvalidate = function() {
+        var btn = $('#cgInvalidateBtn');
+        var result = $('#cgInvalidateResult');
+        btn.prop('disabled', true);
+        result.css('color', '').text('{{ 'ContentGrouping_InvalidateProcessing'|translate }}');
+        apiPost('invalidateReports', {}, {idSite:getSelectedSite()}, function(res) {
+            btn.prop('disabled', false);
+            if (res && res.success) {
+                result.css('color', '#2e7d32').text(res.message || '{{ 'ContentGrouping_InvalidateSuccess'|translate }}');
+            } else {
+                result.css('color', '#c62828').text('{{ 'ContentGrouping_InvalidateError'|translate }}');
+            }
+        });
+    };
+
+    loadList();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,8 @@
+{
+    "name": "ContentGrouping",
+    "description": "Group page URLs into named content groups using regex or prefix rules, with full reporting and goal metrics.",
+    "version": "1.0.0",
+    "require": {
+        "matomo": ">=5.0.0-b1,<6.0.0-b1"
+    }
+}
