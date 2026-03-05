@@ -23,45 +23,53 @@ class RuleEngine
     public function evaluateUrl($url, array $rules)
     {
         foreach ($rules as $rule) {
-            $pattern = $rule['pattern'] ?? '';
-            $matchType = $rule['match_type'] ?? 'prefix';
-
-            if ($matchType === 'regex') {
-                $regex = '~' . str_replace('~', '\~', $pattern) . '~';
-
-                $previousLimit = ini_get('pcre.backtrack_limit');
-                ini_set('pcre.backtrack_limit', self::SAFE_BACKTRACK_LIMIT);
-
-                $result = preg_match($regex, $url);
-
-                ini_set('pcre.backtrack_limit', $previousLimit);
-
-                if ($result === false) {
-                    $errorCode = preg_last_error();
-                    try {
-                        $logger = StaticContainer::get(LoggerInterface::class);
-                        $logger->warning(
-                            'ContentGrouping: regex error {errorCode} for pattern "{pattern}" on URL "{url}"',
-                            ['errorCode' => $errorCode, 'pattern' => $pattern, 'url' => mb_substr($url, 0, 200)]
-                        );
-                    } catch (\Exception $e) {
-                        // logger unavailable during tests
-                    }
-                    continue;
-                }
-
-                if ($result) {
-                    return $rule['group_name'];
-                }
-            } else {
-                // prefix match
-                if (strpos($url, $pattern) === 0) {
-                    return $rule['group_name'];
-                }
+            if ($this->matchesRule($url, $rule)) {
+                return $rule['group_name'];
             }
         }
 
-        return Piwik::translate('General_NotDefined', Piwik::translate('ContentGrouping_ContentGroup'));
+        return self::getOthersGroupLabel();
+    }
+
+    public static function getOthersGroupLabel(): string
+    {
+        return Piwik::translate('General_Others');
+    }
+
+    public function matchesRule($url, array $rule): bool
+    {
+        $pattern = $rule['pattern'] ?? '';
+        $matchType = $rule['match_type'] ?? 'prefix';
+
+        if ($matchType === 'regex') {
+            $regex = '~' . str_replace('~', '\~', $pattern) . '~';
+
+            $previousLimit = ini_get('pcre.backtrack_limit');
+            ini_set('pcre.backtrack_limit', self::SAFE_BACKTRACK_LIMIT);
+
+            $result = preg_match($regex, $url);
+
+            ini_set('pcre.backtrack_limit', $previousLimit);
+
+            if ($result === false) {
+                $errorCode = preg_last_error();
+                try {
+                    $logger = StaticContainer::get(LoggerInterface::class);
+                    $logger->warning(
+                        'ContentGrouping: regex error {errorCode} for pattern "{pattern}" on URL "{url}"',
+                        ['errorCode' => $errorCode, 'pattern' => $pattern, 'url' => mb_substr($url, 0, 200)]
+                    );
+                } catch (\Exception $e) {
+                    // logger unavailable during tests
+                }
+                return false;
+            }
+
+            return (bool) $result;
+        }
+
+        // prefix match
+        return strpos($url, $pattern) === 0;
     }
 
     /**

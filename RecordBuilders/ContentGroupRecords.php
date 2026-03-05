@@ -27,38 +27,60 @@ class ContentGroupRecords extends RecordBuilder
 
     public function getRecordMetadata(ArchiveProcessor $archiveProcessor): array
     {
-        return [
-            Record::make(Record::TYPE_BLOB, Archiver::CONTENT_GROUPS_RECORD_NAME),
-        ];
+        $idSite = $archiveProcessor->getParams()->getSite()->getId();
+        $dao = new RulesDao();
+        $mappings = $dao->getMappingsForSite($idSite);
+
+        if (empty($mappings)) {
+            $mappings = [Archiver::DEFAULT_MAPPING_NAME];
+        }
+
+        $records = [];
+        foreach ($mappings as $mappingName) {
+            $records[] = Record::make(Record::TYPE_BLOB, Archiver::getRecordNameForMapping($mappingName));
+        }
+
+        return $records;
     }
 
     public function isEnabled(ArchiveProcessor $archiveProcessor): bool
     {
         $idSite = $archiveProcessor->getParams()->getSite()->getId();
         $dao = new RulesDao();
-        $rules = $dao->getRulesForSite($idSite);
-        return !empty($rules);
+        return !empty($dao->getRulesForSite($idSite, null));
     }
 
     protected function aggregate(ArchiveProcessor $archiveProcessor): array
     {
         $idSite = $archiveProcessor->getParams()->getSite()->getId();
         $dao = new RulesDao();
-        $rules = $dao->getRulesForSite($idSite);
+        $mappings = $dao->getMappingsForSite($idSite);
+        $result = [];
 
-        $report = new DataTable();
-
-        if (empty($rules)) {
-            return [Archiver::CONTENT_GROUPS_RECORD_NAME => $report];
+        if (empty($mappings)) {
+            $result[Archiver::CONTENT_GROUPS_RECORD_NAME] = new DataTable();
+            return $result;
         }
 
         $logAggregator = $archiveProcessor->getLogAggregator();
         $ruleEngine = new RuleEngine();
 
-        $this->aggregatePageMetrics($report, $logAggregator, $ruleEngine, $rules);
-        $this->aggregateGoalMetrics($report, $logAggregator, $ruleEngine, $rules);
+        foreach ($mappings as $mappingName) {
+            $rules = $dao->getRulesForSite($idSite, $mappingName);
+            $report = new DataTable();
 
-        return [Archiver::CONTENT_GROUPS_RECORD_NAME => $report];
+            if (empty($rules)) {
+                $result[Archiver::getRecordNameForMapping($mappingName)] = $report;
+                continue;
+            }
+
+            $this->aggregatePageMetrics($report, $logAggregator, $ruleEngine, $rules);
+            $this->aggregateGoalMetrics($report, $logAggregator, $ruleEngine, $rules);
+
+            $result[Archiver::getRecordNameForMapping($mappingName)] = $report;
+        }
+
+        return $result;
     }
 
     private function aggregatePageMetrics(DataTable $report, LogAggregator $logAggregator, RuleEngine $ruleEngine, array $rules)

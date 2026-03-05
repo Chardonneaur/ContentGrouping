@@ -31,6 +31,7 @@ class ContentGrouping extends \Piwik\Plugin
     public function getTablesInstalled(&$allTablesInstalled)
     {
         $allTablesInstalled[] = Common::prefixTable('content_grouping_rule');
+        $allTablesInstalled[] = Common::prefixTable('content_grouping_mapping');
     }
 
     public function onSiteDeleted($idSite)
@@ -51,5 +52,11 @@ class ContentGrouping extends \Piwik\Plugin
         $translationKeys[] = 'ContentGrouping_InvalidateProcessing';
         $translationKeys[] = 'ContentGrouping_InvalidateSuccess';
         $translationKeys[] = 'ContentGrouping_InvalidateError';
+        $translationKeys[] = 'ContentGrouping_SelectMapping';
+        $translationKeys[] = 'ContentGrouping_MappingName';
+        $translationKeys[] = 'ContentGrouping_UnmappedPreviewTitle';
+        $translationKeys[] = 'ContentGrouping_UnmappedPreviewDescription';
+        $translationKeys[] = 'ContentGrouping_UnmappedPreviewButton';
+        $translationKeys[] = 'ContentGrouping_UnmappedPreviewEmpty';
     }
 }

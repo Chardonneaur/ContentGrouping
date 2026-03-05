@@ -5,6 +5,8 @@ Group page URLs into named content groups using regex or prefix rules, with full
 ## Features
 
 - **Flexible URL matching** — Define rules using URL prefix or regex patterns
+- **Multiple mappings per site** — Create different mapping sets for different granularities (eg. macro vs micro taxonomy)
+- **Conflict prevention within a mapping** — A page can belong to only one group in the same mapping
 - **Priority-based evaluation** — Rules are evaluated in priority order (lowest number first); first match wins
 - **Per-site configuration** — Each website has its own set of content grouping rules
 - **Full reporting** — Dedicated Content Groups report under Actions with:
@@ -13,6 +15,7 @@ Group page URLs into named content groups using regex or prefix rules, with full
   - Goal conversions and revenue per group
   - Expandable subtables showing individual URLs within each group
 - **Admin UI** — Manage rules, test URLs, and invalidate reports from the Matomo admin panel
+- **Unmapped page preview** — Inspect URLs currently classified in `Others` for a chosen period/date
 - **Site selector** — Switch between websites directly from the admin page
 - **Report invalidation** — Re-process archived reports per-site after changing rules
 
@@ -34,6 +37,7 @@ Navigate to **Administration > Websites > Content Groups** to manage rules.
 
 | Field | Description |
 |-------|-------------|
+| **Mapping Name** | Name of the mapping set (for example `default`, `journey-high-level`, `seo-granular`) |
 | **Group Name** | The label shown in reports (e.g., "Blog", "Product Pages") |
 | **Pattern** | The URL prefix or regex pattern to match |
 | **Match Type** | `Prefix` — matches URLs starting with the pattern; `Regex` — full regex matching |
@@ -58,6 +62,11 @@ Navigate to **Administration > Websites > Content Groups** to manage rules.
 
 Use the **Test URL** field at the bottom of the admin page to verify which group a URL matches before saving.
 
+### Unmapped Pages and Time Window
+
+Use **Out-of-Mapping Pages** in the admin screen to preview URLs that currently fall in `Others`.
+You can choose the `period` and `date` (for example `month + last30`, `year + today`, or a custom `range`).
+
 ### Re-processing Reports
 
 After adding or changing rules, click **Invalidate Reports** to clear cached data for the selected website. Reports will be re-processed with the updated rules on the next archiving run or page load.
@@ -81,11 +90,20 @@ All methods are available via the Matomo HTTP API.
 | Method | Access | Description |
 |--------|--------|-------------|
 | `ContentGrouping.getRules` | Admin | List all rules for a site |
+| `ContentGrouping.getMappings` | Admin | List mapping names configured for a site |
 | `ContentGrouping.addRule` | Admin | Create a new rule |
 | `ContentGrouping.updateRule` | Admin | Update an existing rule |
 | `ContentGrouping.deleteRule` | Admin | Delete a rule |
 | `ContentGrouping.testUrl` | Admin | Test which group a URL matches |
+| `ContentGrouping.previewUnmappedPages` | Admin | Preview URLs currently classified as `Others` for a period/date |
 | `ContentGrouping.invalidateReports` | Admin | Invalidate cached reports for a site |
+
+## Data Model Notes
+
+- Group assignment is computed from existing Matomo page URL logs during aggregation.
+- No extra page-group value is sent in tracking hits.
+- If you change rules later, historical archives can change after invalidation/reprocessing.
+- This behavior also applies when using groups in segments or custom reporting.
 
 ## Security
 
