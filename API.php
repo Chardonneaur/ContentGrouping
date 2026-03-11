@@ -47,6 +47,17 @@ class API extends \Piwik\Plugin\API
         return $dataTable;
     }
 
+    // ---- Group Transitions Report (visualization entry point) ----
+
+    public function getGroupTransitionsReport($idSite, $period, $date, $segment = false): DataTable
+    {
+        Piwik::checkUserHasViewAccess($idSite);
+
+        // The actual transitions data is fetched client-side via getGroupTransitions().
+        // This method exists solely so the Report class has an API endpoint to attach to.
+        return new DataTable();
+    }
+
     // ---- Group Transitions ----
 
     public function getGroupTransitions(

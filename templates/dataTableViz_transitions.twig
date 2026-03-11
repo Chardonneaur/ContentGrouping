@@ -1,0 +1,202 @@
+<style>
+#cgTransPage { max-width: 1200px; margin: 0 auto; }
+.cg-hero { margin-bottom: 20px; padding: 18px 20px; border-radius: 8px; background: linear-gradient(135deg, #f8fbff 0%, #eef6ff 100%); border: 1px solid #d4e3f7; }
+.cg-hero h2 { margin: 0 0 8px; }
+.cg-card { border: 1px solid #e1e8f0; border-radius: 8px; background: #fff; padding: 14px; }
+.cg-card h3 { margin: 0 0 10px; font-size: 16px; }
+.cg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-bottom: 18px; }
+.cg-inline { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cg-note { margin-top: 8px; color: #586675; font-size: 12px; }
+.cg-summary { color: #4b5b6c; font-size: 13px; }
+#cgNotice { display: none; margin: 12px 0; padding: 10px 12px; border-radius: 6px; font-weight: 600; }
+#cgNotice.info    { background: #e8f1ff; color: #1f4f8c; border: 1px solid #bfd6f5; }
+#cgNotice.success { background: #e9f8ef; color: #236f42; border: 1px solid #bde6cc; }
+#cgNotice.error   { background: #fdeaea; color: #9f2d2d; border: 1px solid #f3bcbc; }
+</style>
+
+<div id="cgTransPage">
+
+    <div class="cg-hero">
+        <h2>{{ 'ContentGrouping_GroupTransitions'|translate }}</h2>
+        <p>{{ 'ContentGrouping_GroupTransitionsDescription'|translate }}</p>
+        <p class="cg-note">{{ 'ContentGrouping_TransitionsDateHint'|translate }}</p>
+    </div>
+
+    <div id="cgNotice"></div>
+
+    <div class="cg-grid">
+        <div class="cg-card">
+            <h3>{{ 'ContentGrouping_SelectMapping'|translate }}</h3>
+            <select id="cgMappingSelector" class="browser-default" style="max-width:350px"></select>
+        </div>
+        <div class="cg-card">
+            <h3>{{ 'ContentGrouping_TransitionsGroupCard'|translate }}</h3>
+            <div class="cg-inline">
+                <select id="cgGroupSelector" class="browser-default" style="max-width:280px">
+                    <option value="">—</option>
+                </select>
+                <button type="button" class="btn" onclick="cgLoadTransitions()">
+                    {{ 'ContentGrouping_GroupTransitionsLoadButton'|translate }}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="cgTransContent" style="display:none">
+        <div class="cg-card">
+            <div id="cgTransMeta" class="cg-summary" style="margin-bottom:12px"></div>
+            <div id="cgTransEmpty" style="display:none; color:#738496; margin-bottom:12px">
+                {{ 'ContentGrouping_GroupTransitionsEmpty'|translate }}
+            </div>
+            <div id="cgTransResults" style="display:none">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px">
+                    <div>
+                        <h4 style="margin:0 0 10px">{{ 'ContentGrouping_GroupTransitionsPrevious'|translate }}</h4>
+                        <table class="entityTable">
+                            <thead><tr>
+                                <th>{{ 'ContentGrouping_GroupTransitionsGroup'|translate }}</th>
+                                <th>{{ 'ContentGrouping_GroupTransitionsCount'|translate }}</th>
+                            </tr></thead>
+                            <tbody id="cgTransPrevBody"></tbody>
+                        </table>
+                    </div>
+                    <div>
+                        <h4 style="margin:0 0 10px">{{ 'ContentGrouping_GroupTransitionsFollowing'|translate }}</h4>
+                        <table class="entityTable">
+                            <thead><tr>
+                                <th>{{ 'ContentGrouping_GroupTransitionsGroup'|translate }}</th>
+                                <th>{{ 'ContentGrouping_GroupTransitionsCount'|translate }}</th>
+                            </tr></thead>
+                            <tbody id="cgTransNextBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+(function () {
+    var idSite  = {{ javascriptVariablesToSet.idSite }};
+    var period  = '{{ clientSideParameters.period|e('js') }}';
+    var date    = '{{ clientSideParameters.date|e('js') }}';
+    var segment = '{{ clientSideParameters.segment|default('')|e('js') }}';
+
+    function showNotice(type, msg) {
+        $('#cgNotice').removeClass('info success error').addClass(type).text(msg).show();
+    }
+
+    function parseError(xhr) {
+        if (xhr && xhr.message) { return xhr.message; }
+        if (xhr && xhr.responseJSON && xhr.responseJSON.message) { return xhr.responseJSON.message; }
+        return '{{ 'General_ErrorRequest'|translate|e('js') }}';
+    }
+
+    function api(method, params, cb, errCb) {
+        var a = new ajaxHelper();
+        a.addParams($.extend({ module: 'API', method: 'ContentGrouping.' + method, format: 'json' }, params), 'get');
+        a.setCallback(function (resp) {
+            if (resp && resp.result === 'error') {
+                if (typeof errCb === 'function') { errCb(resp); } else { showNotice('error', resp.message || ''); }
+                return;
+            }
+            cb(resp && resp.result === 'success' && typeof resp.value !== 'undefined' ? resp.value : resp);
+        });
+        a.setErrorCallback(function (xhr) {
+            if (typeof errCb === 'function') { errCb(xhr); } else { showNotice('error', parseError(xhr)); }
+        });
+        a.setFormat('json');
+        a.send();
+    }
+
+    function normalizeArray(resp) {
+        if ($.isArray(resp)) { return resp; }
+        if (resp && $.isArray(resp.value)) { return resp.value; }
+        return [];
+    }
+
+    function loadMappings() {
+        api('getMappings', { idSite: idSite }, function (mappings) {
+            mappings = normalizeArray(mappings);
+            var sel = $('#cgMappingSelector').empty();
+            $.each(mappings, function (i, m) {
+                sel.append('<option value="' + piwikHelper.escape(m) + '">' + piwikHelper.escape(m) + '</option>');
+            });
+            loadGroups();
+        });
+    }
+
+    function loadGroups() {
+        var mapping = $('#cgMappingSelector').val() || 'default';
+        api('getRules', { idSite: idSite, mappingName: mapping }, function (rules) {
+            rules = normalizeArray(rules);
+            var sel = $('#cgGroupSelector').empty();
+            sel.append('<option value="">—</option>');
+            var seen = {};
+            $.each(rules, function (i, r) {
+                if (!seen[r.group_name]) {
+                    seen[r.group_name] = true;
+                    sel.append('<option value="' + piwikHelper.escape(r.group_name) + '">' + piwikHelper.escape(r.group_name) + '</option>');
+                }
+            });
+            $('#cgTransContent').hide();
+        });
+    }
+
+    window.cgLoadTransitions = function () {
+        var group = $('#cgGroupSelector').val();
+        if (!group) {
+            showNotice('error', '{{ 'ContentGrouping_GroupTransitionsSelectGroup'|translate|e('js') }}');
+            return;
+        }
+
+        var params = {
+            idSite:      idSite,
+            period:      period,
+            date:        date,
+            groupName:   group,
+            mappingName: $('#cgMappingSelector').val() || 'default'
+        };
+        if (segment) { params.segment = segment; }
+
+        $('#cgNotice').hide();
+
+        api('getGroupTransitions', params, function (res) {
+            $('#cgTransContent').show();
+            $('#cgTransMeta').text('{{ 'ContentGrouping_GroupTransitionsPageviews'|translate|e('js') }}: ' + (res.pageviews || 0));
+
+            var prev = res.previousGroups  || [];
+            var next = res.followingGroups || [];
+
+            if (!prev.length && !next.length) {
+                $('#cgTransResults').hide();
+                $('#cgTransEmpty').show();
+                return;
+            }
+
+            $('#cgTransEmpty').hide();
+
+            var prevBody = $('#cgTransPrevBody').empty();
+            $.each(prev, function (i, row) {
+                prevBody.append('<tr><td>' + piwikHelper.escape(row.label) + '</td><td>' + piwikHelper.escape(String(row.nb)) + '</td></tr>');
+            });
+
+            var nextBody = $('#cgTransNextBody').empty();
+            $.each(next, function (i, row) {
+                nextBody.append('<tr><td>' + piwikHelper.escape(row.label) + '</td><td>' + piwikHelper.escape(String(row.nb)) + '</td></tr>');
+            });
+
+            $('#cgTransResults').show();
+        });
+    };
+
+    $('#cgMappingSelector').on('change', loadGroups);
+    $('#cgGroupSelector').on('change', function () {
+        if ($(this).val()) { cgLoadTransitions(); }
+    });
+
+    loadMappings();
+}());
+</script>

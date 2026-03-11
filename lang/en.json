@@ -2,6 +2,7 @@
     "ContentGrouping": {
         "ContentGroups": "Content Groups",
         "ContentGroup": "Content Group",
+        "GroupTransitions": "Group Transitions",
         "ManageRules": "Manage Content Grouping Rules",
         "AddRule": "Add Rule",
         "EditRule": "Edit Rule",
