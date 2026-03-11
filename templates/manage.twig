@@ -529,8 +529,8 @@ $(function() {
                         '<td><span class="cg-badge ' + typeBadgeClass + '">' + typeLabel + '</span></td>' +
                         '<td>' + piwikHelper.escape(String(r.priority)) + '</td>' +
                         '<td>' +
-                            '<button type="button" class="btn-flat btn-small" onclick="cgEditItem(' + r.idrule + ')">{{ 'ContentGrouping_Edit'|translate|e('js') }}</button> ' +
-                            '<button type="button" class="btn-flat btn-small" style="color:#c62828" onclick="cgDelItem(' + r.idrule + ')">{{ 'ContentGrouping_Delete'|translate|e('js') }}</button>' +
+                            '<button type="button" class="btn-flat btn-small" onclick="cgEditItem(' + parseInt(r.idrule, 10) + ')">{{ 'ContentGrouping_Edit'|translate|e('js') }}</button> ' +
+                            '<button type="button" class="btn-flat btn-small" style="color:#c62828" onclick="cgDelItem(' + parseInt(r.idrule, 10) + ')">{{ 'ContentGrouping_Delete'|translate|e('js') }}</button>' +
                         '</td>' +
                     '</tr>'
                 );

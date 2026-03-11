@@ -89,16 +89,26 @@ class RuleEngine
     }
 
     /**
-     * Detect nested quantifiers that can cause catastrophic backtracking (ReDoS).
-     * Rejects patterns like (a+)+, (a*)+, (a+)*, (\w+)+, etc.
+     * Detect patterns that can cause catastrophic backtracking (ReDoS).
+     * Rejects nested quantifiers like (a+)+, (a*)+, (a+)*, (\w+)+, etc.
+     * Also rejects alternation groups with an outer quantifier like (a|aa)+.
      *
      * @param string $pattern
-     * @return bool True if nested quantifiers are detected
+     * @return bool True if an unsafe pattern is detected
      */
     public static function hasNestedQuantifiers($pattern)
     {
-        // Match a group (...) followed by a quantifier, where the group contains a quantifier
-        // This catches (a+)+, (a+)*, (a*){2,}, (\w+)+, etc.
-        return (bool) preg_match('/\([^)]*[+*}\?][^)]*\)\s*[+*?{]/', $pattern);
+        // Nested quantifiers: (a+)+, (a+)*, (a*){2,}, (\w+)+, etc.
+        if (preg_match('/\([^)]*[+*}\?][^)]*\)\s*[+*?{]/', $pattern)) {
+            return true;
+        }
+
+        // Alternation with outer quantifier: (a|aa)+, (abc|abcd)+, etc.
+        // Alternating groups with an outer quantifier can cause catastrophic backtracking.
+        if (preg_match('/\([^)]*\|[^)]*\)\s*[+*?{]/', $pattern)) {
+            return true;
+        }
+
+        return false;
     }
 }
