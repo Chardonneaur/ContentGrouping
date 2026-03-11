@@ -79,7 +79,7 @@
 
 <script>
 (function () {
-    var idSite  = {{ javascriptVariablesToSet.idSite }};
+    var idSite  = {{ clientSideParameters.idSite }};
     var period  = '{{ clientSideParameters.period|e('js') }}';
     var date    = '{{ clientSideParameters.date|e('js') }}';
     var segment = '{{ clientSideParameters.segment|default('')|e('js') }}';
