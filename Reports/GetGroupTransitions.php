@@ -16,7 +16,7 @@ class GetGroupTransitions extends Report
         $this->module             = 'ContentGrouping';
         $this->action             = 'getGroupTransitionsReport';
         $this->categoryId         = 'General_Actions';
-        $this->subcategoryId      = 'ContentGrouping_ContentGroups';
+        $this->subcategoryId      = 'ContentGrouping_GroupTransitions';
         $this->name               = Piwik::translate('ContentGrouping_GroupTransitions');
         $this->order              = 41;
         $this->metrics            = [];
