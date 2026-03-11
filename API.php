@@ -54,12 +54,14 @@ class API extends \Piwik\Plugin\API
         $period,
         $date,
         $groupName,
-        $mappingName = Archiver::DEFAULT_MAPPING_NAME
+        $mappingName = Archiver::DEFAULT_MAPPING_NAME,
+        $segment = false
     ): array {
         Piwik::checkUserHasViewAccess($idSite);
 
         $mappingName = $this->normalizeMappingName($mappingName);
         $groupName   = trim((string) $groupName);
+        $segment     = (string) ($segment ?: '');
 
         $periodObj = PeriodFactory::build($period, $date);
         $start     = $periodObj->getDateTimeStart()->toString('Y-m-d H:i:s');
@@ -84,13 +86,13 @@ class API extends \Piwik\Plugin\API
         return [
             'groupName'       => $groupName,
             'mappingName'     => $mappingName,
-            'pageviews'       => $model->countPageviews((int) $idSite, $groupRules, $start, $end),
+            'pageviews'       => $model->countPageviews((int) $idSite, $groupRules, $start, $end, $segment),
             'previousGroups'  => $model->classifyAndAggregate(
-                $model->queryPreviousUrls((int) $idSite, $groupRules, $start, $end),
+                $model->queryPreviousUrls((int) $idSite, $groupRules, $start, $end, 300, $segment),
                 $allRules
             ),
             'followingGroups' => $model->classifyAndAggregate(
-                $model->queryFollowingUrls((int) $idSite, $groupRules, $start, $end),
+                $model->queryFollowingUrls((int) $idSite, $groupRules, $start, $end, 300, $segment),
                 $allRules
             ),
         ];

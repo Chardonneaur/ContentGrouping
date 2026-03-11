@@ -4,6 +4,7 @@ namespace Piwik\Plugins\ContentGrouping\Model;
 
 use Piwik\Common;
 use Piwik\Db;
+use Piwik\Segment;
 
 class GroupTransitionsModel
 {
@@ -47,6 +48,27 @@ class GroupTransitionsModel
     }
 
     /**
+     * Build a segment subquery fragment for filtering visits by segment.
+     * Returns ['sql' => '...', 'bind' => [...]] or null if no segment active.
+     */
+    private function buildSegmentSubquery(string $segment, int $idSite): ?array
+    {
+        if ($segment === '') {
+            return null;
+        }
+
+        $segObj = new Segment($segment, [$idSite]);
+        $query  = $segObj->getSelectQuery(
+            'log_visit.idvisit',
+            'log_visit',
+            'log_visit.idsite = ' . $idSite,
+            []
+        );
+
+        return $query ?: null;
+    }
+
+    /**
      * Return the raw page URLs that immediately preceded pages in $groupRules,
      * along with their transition counts.
      *
@@ -57,7 +79,8 @@ class GroupTransitionsModel
         array  $groupRules,
         string $dateStart,
         string $dateEnd,
-        int    $limit = 300
+        int    $limit = 300,
+        string $segment = ''
     ): array {
         [$cond, $binds] = $this->buildGroupCondition('la_curr', $groupRules);
 
@@ -65,7 +88,14 @@ class GroupTransitionsModel
         $la  = Common::prefixTable('log_action');
         $lv  = Common::prefixTable('log_visit');
 
+        $where  = "lv.`idsite` = ? AND lva.`server_time` >= ? AND lva.`server_time` <= ? AND {$cond}";
         $params = array_merge([$idSite, $dateStart, $dateEnd], $binds);
+
+        $segSubquery = $this->buildSegmentSubquery($segment, $idSite);
+        if ($segSubquery) {
+            $where  .= " AND lv.`idvisit` IN ({$segSubquery['sql']})";
+            $params  = array_merge($params, $segSubquery['bind']);
+        }
 
         return Db::fetchAll("
             SELECT la_prev.`name` AS url, COUNT(*) AS nb_transitions
@@ -78,10 +108,7 @@ class GroupTransitionsModel
             INNER JOIN `{$la}` la_prev
                 ON la_prev.`idaction` = lva.`idaction_url_ref`
                AND la_prev.`type` = 1
-            WHERE lv.`idsite` = ?
-              AND lva.`server_time` >= ?
-              AND lva.`server_time` <= ?
-              AND {$cond}
+            WHERE {$where}
             GROUP BY la_prev.`name`
             ORDER BY nb_transitions DESC
             LIMIT {$limit}
@@ -99,7 +126,8 @@ class GroupTransitionsModel
         array  $groupRules,
         string $dateStart,
         string $dateEnd,
-        int    $limit = 300
+        int    $limit = 300,
+        string $segment = ''
     ): array {
         [$cond, $binds] = $this->buildGroupCondition('la_grp', $groupRules);
 
@@ -107,7 +135,14 @@ class GroupTransitionsModel
         $la  = Common::prefixTable('log_action');
         $lv  = Common::prefixTable('log_visit');
 
+        $where  = "lv.`idsite` = ? AND lva.`server_time` >= ? AND lva.`server_time` <= ? AND {$cond}";
         $params = array_merge([$idSite, $dateStart, $dateEnd], $binds);
+
+        $segSubquery = $this->buildSegmentSubquery($segment, $idSite);
+        if ($segSubquery) {
+            $where  .= " AND lv.`idvisit` IN ({$segSubquery['sql']})";
+            $params  = array_merge($params, $segSubquery['bind']);
+        }
 
         return Db::fetchAll("
             SELECT la_next.`name` AS url, COUNT(*) AS nb_transitions
@@ -120,10 +155,7 @@ class GroupTransitionsModel
             INNER JOIN `{$la}` la_next
                 ON la_next.`idaction` = lva.`idaction_url`
                AND la_next.`type` = 1
-            WHERE lv.`idsite` = ?
-              AND lva.`server_time` >= ?
-              AND lva.`server_time` <= ?
-              AND {$cond}
+            WHERE {$where}
             GROUP BY la_next.`name`
             ORDER BY nb_transitions DESC
             LIMIT {$limit}
@@ -137,7 +169,8 @@ class GroupTransitionsModel
         int    $idSite,
         array  $groupRules,
         string $dateStart,
-        string $dateEnd
+        string $dateEnd,
+        string $segment = ''
     ): int {
         [$cond, $binds] = $this->buildGroupCondition('la', $groupRules);
 
@@ -145,7 +178,14 @@ class GroupTransitionsModel
         $la  = Common::prefixTable('log_action');
         $lv  = Common::prefixTable('log_visit');
 
+        $where  = "lv.`idsite` = ? AND lva.`server_time` >= ? AND lva.`server_time` <= ? AND {$cond}";
         $params = array_merge([$idSite, $dateStart, $dateEnd], $binds);
+
+        $segSubquery = $this->buildSegmentSubquery($segment, $idSite);
+        if ($segSubquery) {
+            $where  .= " AND lv.`idvisit` IN ({$segSubquery['sql']})";
+            $params  = array_merge($params, $segSubquery['bind']);
+        }
 
         return (int) Db::fetchOne("
             SELECT COUNT(*)
@@ -155,10 +195,7 @@ class GroupTransitionsModel
             INNER JOIN `{$la}` la
                 ON la.`idaction` = lva.`idaction_url`
                AND la.`type` = 1
-            WHERE lv.`idsite` = ?
-              AND lva.`server_time` >= ?
-              AND lva.`server_time` <= ?
-              AND {$cond}
+            WHERE {$where}
         ", $params);
     }
 

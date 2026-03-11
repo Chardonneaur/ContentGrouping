@@ -65,6 +65,8 @@
         "GroupTransitionsGroup": "Group",
         "GroupTransitionsCount": "Transitions",
         "GroupTransitionsPageviews": "Pageviews for this group",
-        "GroupTransitionsEmpty": "No transition data found for this group and period."
+        "GroupTransitionsEmpty": "No transition data found for this group and period.",
+        "TransitionsDateHint": "Use the date picker and segment selector in the top navigation bar to filter the analysis. The page reloads automatically.",
+        "TransitionsGroupCard": "Select Group"
     }
 }

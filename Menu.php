@@ -4,6 +4,7 @@ namespace Piwik\Plugins\ContentGrouping;
 
 use Piwik\Common;
 use Piwik\Menu\MenuAdmin;
+use Piwik\Menu\MenuReporting;
 use Piwik\Piwik;
 use Piwik\Plugins\UsersManager\UserPreferences;
 
@@ -20,6 +21,22 @@ class Menu extends \Piwik\Plugin\Menu
                 'ContentGrouping_ContentGroups',
                 $this->urlForAction('manage'),
                 $orderId = 42
+            );
+        }
+    }
+
+    public function configureReportingMenu(MenuReporting $menu)
+    {
+        $userPreferences = new UserPreferences();
+        $default = $userPreferences->getDefaultWebsiteId();
+        $idSite = Common::getRequestVar('idSite', $default, 'int');
+
+        if (Piwik::isUserHasAdminAccess($idSite)) {
+            $menu->addItem(
+                'General_Actions',
+                'ContentGrouping_GroupTransitions',
+                $this->urlForAction('transitions'),
+                $orderId = 41
             );
         }
     }
