@@ -6,8 +6,10 @@ use Piwik\Plugin\Visualization;
 
 class GroupTransitions extends Visualization
 {
-    const ID            = 'ContentGrouping.GroupTransitions';
-    const TEMPLATE_FILE = '@ContentGrouping/dataTableViz_transitions.twig';
+    const ID               = 'ContentGrouping.GroupTransitions';
+    const TEMPLATE_FILE    = '@ContentGrouping/dataTableViz_transitions.twig';
+    const FOOTER_ICON_TITLE = '';
+    const FOOTER_ICON       = '';
 
     public function beforeRender()
     {
