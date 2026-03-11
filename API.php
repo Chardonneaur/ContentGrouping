@@ -152,6 +152,40 @@ class API extends \Piwik\Plugin\API
         ];
     }
 
+    // ---- Read-only methods for reporting UI (view access) ----
+
+    public function getMappingsForReport($idSite)
+    {
+        Piwik::checkUserHasViewAccess($idSite);
+
+        $dao = new RulesDao();
+        $mappings = $dao->getMappingsForSite($idSite);
+        if (!in_array(Archiver::DEFAULT_MAPPING_NAME, $mappings, true)) {
+            $mappings[] = Archiver::DEFAULT_MAPPING_NAME;
+            sort($mappings);
+        }
+        return $mappings;
+    }
+
+    public function getGroupNamesForReport($idSite, $mappingName = Archiver::DEFAULT_MAPPING_NAME)
+    {
+        Piwik::checkUserHasViewAccess($idSite);
+
+        $dao = new RulesDao();
+        $rules = $dao->getRulesForSite($idSite, $this->normalizeMappingName($mappingName));
+
+        $seen = [];
+        $groups = [];
+        foreach ($rules as $rule) {
+            $name = (string) $rule['group_name'];
+            if (!isset($seen[$name])) {
+                $seen[$name] = true;
+                $groups[] = $name;
+            }
+        }
+        return $groups;
+    }
+
     // ---- Rules CRUD ----
 
     public function getRules($idSite, $mappingName = Archiver::DEFAULT_MAPPING_NAME)
